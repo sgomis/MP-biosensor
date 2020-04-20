@@ -4,6 +4,8 @@
 % Research Article: Reagentless Biomolecular Analysis Using a Molecular Pendulum 
 % Updated: April 19, 2020
 
+% -------------------------------------------------
+
 %% Generate potential field 
 clear;clf;
 domain = ones(5e3,5e3); %larger domains take too much data
@@ -28,7 +30,6 @@ for i = 1:1:length(domain)
     V(i) = (4*k*T/z/q)*atanh(tanh(z*q*V0/4/k/T)*exp(-kappa_full*i*dy)); %solve for voltage in domain, pulled from Electrochemical Methods - Fundamentals and Applications (Bard 2001)
 end 
 
-
 figure(1)
 plot(1e9*(dy:dy:length(domain)*dy),V,'k','LineWidth',5)
 xlabel('distance from electrode [nm]','fontsize',18)
@@ -36,6 +37,9 @@ ylabel('magnitude of potential field [V]','fontsize',18)
 % xlim([0 20])
 set(gca,'FontSize',24,'LineWidth',3,'FontName','Arial','units','inches','position',[1.5 1.5 5 5])
 xlim([0 50])
+
+% -------------------------------------------------
+
 %% Derive electric field
 Ey = V*0;
 %Calulate Ey field using the central difference method
@@ -56,13 +60,16 @@ ylabel('magnitude of electric field [V/m]','fontsize',18)
 set(gca,'FontSize',24,'LineWidth',3,'FontName','Arial','units','inches','position',[1.5 1.5 5 5])
 xlim([0 50])
 % axis([0 5 0 1e9])
-%%
+
+% -------------------------------------------------
+
+%% Experimental parameter definitions
 kd = 1.66054e-24; %kg per kilodalton
 bp = 0.65*kd; %mass of 1 base pair
 elec = 1.602e-19; %electronic charge
 num_dna = 24; %dna linker length
 q_multiplier = 100; %linear multiplier for dna charge to speed up ODE solving
-q_dna = num_dna*2*q_multiplier; %dna linker charge 
+q_dna = num_dna*2*q_multiplier; %dna linker charge (2 charges per bp)
 L = num_dna*(0.34e-9) + 6e-9; %length of DNA to middle of Ab (Ab = 10nm, 150kD)
 e0 = 8.854e-12; %permittivity of free space
 er = 1; %medium permittivity, linearly scales output, set to 1 to speed up computation
@@ -72,12 +79,14 @@ dist = 8e-9; %distance between dna linkers, i.e. probe density
 qr_i = 0; %value to decay charge if strand hits surface before middle strand
 ql_i = 0; %value to decay charge if strand hits surface before middle strand
 
-%Experimental parameters of system - e.g. CTI protein + Ab
+%Experimental parameters of target - e.g. CTI protein + Ab
 R = 0.34e-9 + 5e-9 + 2.01e-9;
 q0 = -((q_dna-3)/er)*elec; 
 qr = -((q_dna-3)/er)*elec; 
 ql = -((q_dna-3)/er)*elec; 
 m = num_dna*bp + 150*kd + 24*kd;
+
+% -------------------------------------------------
 
 %% Generate Gaussian distribution to sample starting angles (via inverse transform sampling)
 figure(3)
@@ -91,20 +100,9 @@ cdf = cdf/max(cdf);
 uniform = rand(1000000,1);
 Y = interp1(cdf,a,uniform);
 histogram(Y)
-% 
-% clf
-% a_elec = [-10e-18:1e-20:10e-18];
-% r_elec = normpdf(a_elec,-4e-18,1e-17);
-% plot(r_elec);
-% 
-% cdf_elec = cumtrapz(r_elec);
-% cdf_elec = cdf_elec/max(cdf_elec);
-% plot(cdf_elec);
-% 
-% uniform_elec = rand(1000000,1);
-% Y_elec = interp1(cdf_elec,a_elec,uniform_elec);
-% histogram(Y_elec)
-    
+
+% -------------------------------------------------
+
 %% Perform 4th-order Runge Kutta to solve EOM 
 
 clearvars TTF    
@@ -126,7 +124,7 @@ for sample = 1:5000 %solve for 5000 dna strands %actual numDNA per electrode = 3
     %preallocate matrices for the variables to solve for
     numPoints = length(t);
        
-    %define initial conditions
+    %define initial conditions (using same starting angles will ignore Coulomb interactions)
     theta0_init = Y(sample)*pi/180;
     omega0_init = 0;
     thetar_init = Y(sample)*pi/180;
@@ -319,6 +317,8 @@ for sample = 1:5000 %solve for 5000 dna strands %actual numDNA per electrode = 3
     TTF(sample) = time_real;
     TTF_steps = time_steps;
 end
+
+% -------------------------------------------------
 
 %% Plot motion of DNA strands (for single test case; set sample = 1 in previous block)
 figure(4)
